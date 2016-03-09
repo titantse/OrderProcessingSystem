@@ -11,7 +11,7 @@ namespace OrderProcessing.Domain
         PreProcessing = 2,
         Processing = 3,
         PostProcessing = 4,
-        Compeleted = 5,
+        Completed = 5,
         Failed = 6//Any step above(except Completed,Failed) runs with failure or exception, then the whole Process goes to Fail.
     }
 }

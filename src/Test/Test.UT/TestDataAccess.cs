@@ -44,7 +44,7 @@ namespace OrderProcessing.Test.UT
         [TestCategory("BVT")]
         public void CreateOrderProcessingInfo()
         {
-            var request = DataTestManager.NewRequest();
+            var request = TestDataManager.NewRequest();
             var info = DataAccessor.OrderRepository.CreateOrderProcessingInfo(request);
             Assert.IsNotNull(info);
             Assert.AreEqual(request.OrderDetail, info.OrderDetail);
@@ -55,7 +55,7 @@ namespace OrderProcessing.Test.UT
         [TestCategory("BVT")]
         public void GetOrderProcessingInfo()
         {
-            var request = DataTestManager.NewRequest();
+            var request = TestDataManager.NewRequest();
             var info = DataAccessor.OrderRepository.CreateOrderProcessingInfo(request);
             Assert.IsNotNull(info);
             var queryedInfo = DataAccessor.OrderRepository.GetOrderProcessingInfoById(info.Id);
@@ -73,7 +73,7 @@ namespace OrderProcessing.Test.UT
         public void GetNewProcessingInfos()
         {
             var testSize = 5;
-            var requests = DataTestManager.NewRequests(testSize);
+            var requests = TestDataManager.NewRequests(testSize);
             var infos = CreateOrders(requests);
             var nodeId = "BVTTest";
             var orderProcessingInfos =
@@ -88,7 +88,7 @@ namespace OrderProcessing.Test.UT
         public void GetTimedOutProcessingInfos()
         {
             var testSize = 5;
-            var requests = DataTestManager.NewRequests(testSize);
+            var requests = TestDataManager.NewRequests(testSize);
             var infos = CreateOrders(requests);
             var nodeId = "BVTTest";
             var orderProcessingInfos =
@@ -110,7 +110,7 @@ namespace OrderProcessing.Test.UT
         public void GetDeadNodeProcessingInfos()
         {
             var testSize = 5;
-            var requests = DataTestManager.NewRequests(testSize);
+            var requests = TestDataManager.NewRequests(testSize);
             var infos = CreateOrders(requests);
             var nodeId = "BVTTest";
             var orderProcessingInfos =
@@ -133,12 +133,12 @@ namespace OrderProcessing.Test.UT
         [TestCategory("BVT")]
         public void UpdateOrderProcessingInfo()
         {
-            var request = DataTestManager.NewRequest();
+            var request = TestDataManager.NewRequest();
             var info = DataAccessor.OrderRepository.CreateOrderProcessingInfo(request);
             Assert.IsNotNull(info);
-            info.Status = OrderStatus.Compeleted;
+            info.Status = OrderStatus.Completed;
             info.StartTime = DateTime.UtcNow;
-            info.StepsInfo = DataTestManager.NewStepsInfo();
+            info.StepsInfo = TestDataManager.NewStepsInfo();
             info.CompleteTime = DateTime.UtcNow;
             var info2 = DataAccessor.OrderRepository.UpdateProcessingInfo(info);
             Assert.IsNotNull(info2);

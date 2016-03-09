@@ -43,6 +43,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test.Console", "Test\Test.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Performance", "Common\Performance\Performance.csproj", "{AB1DBCD4-AE68-468A-A72E-5B5F6A3058BD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkNodeHost", "WorkNode\WorkNodeHost\WorkNodeHost.csproj", "{71983E1F-6159-415F-A274-6888F530695C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,10 @@ Global
 		{AB1DBCD4-AE68-468A-A72E-5B5F6A3058BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AB1DBCD4-AE68-468A-A72E-5B5F6A3058BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AB1DBCD4-AE68-468A-A72E-5B5F6A3058BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71983E1F-6159-415F-A274-6888F530695C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71983E1F-6159-415F-A274-6888F530695C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71983E1F-6159-415F-A274-6888F530695C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71983E1F-6159-415F-A274-6888F530695C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -119,5 +125,6 @@ Global
 		{BE91090D-6D9B-4497-9BDC-26EFA0FDA4AD} = {D79C14D1-04FD-40DE-ADD6-6932ADCCB91F}
 		{B9CBE5FB-72EF-4868-B52A-0E2C160FAEE9} = {1C50B123-6232-4556-BC01-F25E143D274F}
 		{AB1DBCD4-AE68-468A-A72E-5B5F6A3058BD} = {ACC21BF2-6A62-42DD-8D41-FEE9A6003042}
+		{71983E1F-6159-415F-A274-6888F530695C} = {514BC711-D14A-407C-8494-C8D30F4AC1BE}
 	EndGlobalSection
 EndGlobal

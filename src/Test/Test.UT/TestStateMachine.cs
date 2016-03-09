@@ -17,7 +17,7 @@ namespace OrderProcessing.Test.UT
             get
             {
                 var ret = new List<OrderStatus>();
-                for (var i = 0; i < (int)OrderStatus.Compeleted; ++i)
+                for (var i = 0; i < (int)OrderStatus.Completed; ++i)
                 {
                     ret.Add((OrderStatus)i);
                 }
@@ -51,13 +51,13 @@ namespace OrderProcessing.Test.UT
         [TestCategory("BVT")]
         public void EmptyStateMachine()
         {
-            var orderInfo = DataTestManager.NewOrderProcessingInfo();
+            var orderInfo = TestDataManager.NewOrderProcessingInfo();
             var fsm = new OrderStateMachine();
             foreach (var state in States)
             {
                 orderInfo.Status = state;
                 var result = fsm.Run(orderInfo);
-                Assert.AreEqual(OrderStatus.Compeleted, result.Status);
+                Assert.AreEqual(OrderStatus.Completed, result.Status);
                 Assert.AreEqual(orderInfo.Id, result.Id);
             }
         }
@@ -66,11 +66,11 @@ namespace OrderProcessing.Test.UT
         [TestCategory("BVT")]
         public void SuccessStateMachine()
         {
-            var orderInfo = DataTestManager.NewOrderProcessingInfo();
+            var orderInfo = TestDataManager.NewOrderProcessingInfo();
             var fsm = new OrderStateMachine();
             fsm.SetOperation(OrderStatus.PreProcessing, SuccessStepProcess);
             fsm.SetOperation(OrderStatus.PostProcessing, SuccessStepProcess);
-            fsm.SetOperation(OrderStatus.Compeleted, SuccessStepProcess);
+            fsm.SetOperation(OrderStatus.Completed, SuccessStepProcess);
             foreach (var state in States)
             {
                 var expectedDetail = new StringBuilder();
@@ -82,14 +82,14 @@ namespace OrderProcessing.Test.UT
                 {
                     expectedDetail.Append(OrderStatus.PostProcessing);
                 }
-                if ((int)state < (int)OrderStatus.Compeleted)
+                if ((int)state < (int)OrderStatus.Completed)
                 {
-                    expectedDetail.Append(OrderStatus.Compeleted);
+                    expectedDetail.Append(OrderStatus.Completed);
                 }
                 orderInfo.Status = state;
                 orderInfo.OrderDetail = "";
                 var result = fsm.Run(orderInfo);
-                Assert.AreEqual(OrderStatus.Compeleted, result.Status);
+                Assert.AreEqual(OrderStatus.Completed, result.Status);
                 Assert.AreEqual(expectedDetail.ToString(), result.OrderDetail);
             }
         }
@@ -98,7 +98,7 @@ namespace OrderProcessing.Test.UT
         [TestCategory("BVT")]
         public void FailedStateMachine()
         {
-            var orderInfo = DataTestManager.NewOrderProcessingInfo();
+            var orderInfo = TestDataManager.NewOrderProcessingInfo();
             var fsm = new OrderStateMachine();
             fsm.SetOperation(OrderStatus.PreProcessing, SuccessStepProcess);
             fsm.SetOperation(OrderStatus.PostProcessing, FailedStepProcess);
@@ -122,7 +122,7 @@ namespace OrderProcessing.Test.UT
         [TestCategory("BVT")]
         public void ExceptionStateMachine()
         {
-            var orderInfo = DataTestManager.NewOrderProcessingInfo();
+            var orderInfo = TestDataManager.NewOrderProcessingInfo();
             var fsm = new OrderStateMachine();
             fsm.SetOperation(OrderStatus.Processing, ExceptionStepProcess);
             foreach (var state in States)

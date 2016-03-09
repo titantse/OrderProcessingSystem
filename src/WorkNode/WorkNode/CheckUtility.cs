@@ -1,11 +1,6 @@
 ﻿
 namespace OrderProcessing.WorkNode
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
     using OrderProcessing.Common;
     using OrderProcessing.Configuration;
     using OrderProcessing.Domain;
@@ -15,6 +10,22 @@ namespace OrderProcessing.WorkNode
     /// </summary>
     public static class CheckUtility
     {
+        public static void AssertNotNull(object parameter, string parameterName)
+        {
+            if (parameter == null)
+            {
+                throw new OrderProcessingException(ErrorCode.InvalidValue, "{0} should not be null.".FormatWith(parameter));
+            }
+        }
+
+        public static void AssertNotNullOrEmpty(string str, string parameterName)
+        {
+            if (string.IsNullOrEmpty(str))
+            {
+                throw new OrderProcessingException(ErrorCode.InvalidValue, "{0} should not be null or empty.".FormatWith(parameterName));
+            }
+        }
+
         public static void CheckWorkNodesConfiguration(WorkNodeElement configuration)
         {
             if (configuration == null)

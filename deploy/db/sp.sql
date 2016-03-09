@@ -121,11 +121,12 @@ BEGIN
 
     DECLARE @tbl_ids TABLE
 	(
-		[id] [varchar](50)
+		[id] [varchar](50),
+		[timestamp] bigint
 	)
 
 	insert into @tbl_ids
-	select TOP (@count) [id] 
+	select TOP (@count) [id] , CAST([timestamp] as bigint)
 	from [work_nodes] 
 	inner join [order_processing_info]
 	on work_nodes.work_node_id= order_processing_info.processing_node_id
@@ -135,11 +136,19 @@ BEGIN
 
 	IF EXISTS (SELECT 1 FROM @tbl_ids )
 	BEGIN
-	update [order_processing_info]
+
+	DECLARE @updated_ids TABLE(
+	     [id] [varchar](50)
+	)
+
+	update A
 	set 
 	[processing_node_id] = @processing_node_id,
 	[last_update_time] = @dt_now
-	where [id] in (select id from @tbl_ids)
+	output inserted.id  into @updated_ids
+	from  [order_processing_info] A
+	join @tbl_ids B
+	on A.id = B.id and CAST(A.timestamp as bigint) = B.timestamp
 
 	SELECT TOP (@count) [id]
 		,[detail]
@@ -153,10 +162,9 @@ BEGIN
 		,[timestamp]
 		,[tracking_id]
 	FROM [order_processing_info]
-	where [id] in (select id from @tbl_ids)
+	where [id] in (select id from @updated_ids)
 	order by create_time 
-
-  END
+    END
 END
 
 /****** Object:  StoredProcedure [dbo].[sp_get_new_processing_infos]    Script Date: 03/07/2016 22:21:14 ******/
@@ -173,20 +181,27 @@ BEGIN
 
     DECLARE @tbl_ids TABLE
 	(
-		[id] [varchar](128)
+		[id] [varchar](128),
+		[timestamp] bigint
 	)
     
 	insert into @tbl_ids
-	select TOP (@count) [id] 
+	select TOP (@count) [id] ,CAST([timestamp] as bigint)
 	from [order_processing_info] 
 	where [status] = 'Pending' order by [create_time]
 
-	update [order_processing_info]
-	set [status] = 'Scheduling',
+	DECLARE @updated_ids TABLE(
+	     [id] [varchar](50)
+	)
+
+	update A
+	set 
 	[processing_node_id] = @processing_node_id,
-	[last_update_time] = @dt_now,
-	[start_time] = @dt_now
-	where [id] in (select id from @tbl_ids)
+	[last_update_time] = @dt_now
+	output inserted.id  into @updated_ids
+	from  [order_processing_info] A
+	join @tbl_ids B
+	on A.id = B.id and CAST(A.timestamp as bigint) = B.timestamp
 
     SELECT TOP (@count) [id]
       ,[detail]
@@ -200,7 +215,7 @@ BEGIN
       ,[timestamp]
       ,[tracking_id]
   FROM [order_processing_info]
-  where [id] in (select id from @tbl_ids)
+  where [id] in (select id from @updated_ids)
   order by create_time 
 
 END
@@ -223,11 +238,12 @@ BEGIN
 
     DECLARE @tbl_ids TABLE
 	(
-		[id] [varchar](128)
+		[id] [varchar](128),
+		[timestamp] bigint
 	)
 
 	insert into @tbl_ids
-	select TOP (@count) [id] 
+	select TOP (@count) [id] ,CAST([timestamp] as bigint)
 	from [order_processing_info] 
 	where [status] != 'Pending' 
 	and [status] != 'Failed' 
@@ -237,27 +253,36 @@ BEGIN
 
 	IF EXISTS (SELECT 1 FROM @tbl_ids )
 	BEGIN
-	update [order_processing_info]
-	set 
-	[processing_node_id] = @processing_node_id,
-	[last_update_time] = @dt_now
-	where [id] in (select id from @tbl_ids)
+	
+		DECLARE @updated_ids TABLE(
+			 [id] [varchar](50)
+		)
 
-	SELECT TOP (@count) [id]
-		,[detail]
-		,[status]
-		,[start_time]
-		,[complete_time]
-		,[processing_node_id]
-		,[last_update_time]
-		,[create_time]
-		,[steps_info]
-		,[timestamp]
-		,[tracking_id]
-	FROM [order_processing_info]
-	where [id] in (select id from @tbl_ids)
-	order by create_time 
-  END
+		update A
+		set 
+		[processing_node_id] = @processing_node_id,
+		[last_update_time] = @dt_now
+		output inserted.id  into @updated_ids
+		from  [order_processing_info] A
+		join @tbl_ids B
+		on A.id = B.id and CAST(A.timestamp as bigint) = B.timestamp
+
+
+		SELECT TOP (@count) [id]
+			,[detail]
+			,[status]
+			,[start_time]
+			,[complete_time]
+			,[processing_node_id]
+			,[last_update_time]
+			,[create_time]
+			,[steps_info]
+			,[timestamp]
+			,[tracking_id]
+		FROM [order_processing_info]
+		where [id] in (select id from @tbl_ids)
+		order by create_time 
+    END
 END
 GO
 

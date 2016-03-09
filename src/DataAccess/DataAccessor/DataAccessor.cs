@@ -21,6 +21,27 @@ namespace OrderProcessing.DataAccessor
     /// </summary>
     public class DataAccessor : IOrderRepository, INodeMonitor
     {
+        #region singleton instance
+        private static DataAccessor _instance;
+        private static DataAccessor Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = new DataAccessor();
+                }
+                return _instance;
+            }
+        }
+
+        private DataAccessor()
+        {
+            _connectionStr = ConfigurationManager.ConnectionStrings["OrderDB"].ConnectionString;
+        }
+
+        #endregion
+
         private static IOrderRepository orderRepositoryOverrided;
         private static INodeMonitor nodeMonitorOverrided;
         private readonly string _connectionStr;
@@ -195,27 +216,6 @@ namespace OrderProcessing.DataAccessor
             return list;
         }
 
-        #region singleton instance
-
-        private static DataAccessor _instance;
-
-        private static DataAccessor Instance
-        {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = new DataAccessor();
-                }
-                return _instance;
-            }
-        }
-
-        private DataAccessor()
-        {
-            _connectionStr = ConfigurationManager.ConnectionStrings["OrderDB"].ConnectionString;
-        }
-
-        #endregion
+        
     }
 }

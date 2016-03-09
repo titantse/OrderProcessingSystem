@@ -1,7 +1,4 @@
 ﻿
-
-using OrderProcessing.Performance;
-
 namespace OrderProcessing.WorkNode
 {
     using System;
@@ -12,6 +9,9 @@ namespace OrderProcessing.WorkNode
     using OrderProcessing.Domain;
     using OrderProcessing.Logger;
     using OrderProcessing.DataAccessor;
+    using OrderProcessing.Performance;
+    using System.Collections.Concurrent;
+    using OrderProcessing.Core;
     /// <summary>
     ///     NodeScheduler is the entry class for the service, it include 3 parts:
     /// 1 pulling thread: periodically pulling orders need to be processed,
@@ -30,7 +30,7 @@ namespace OrderProcessing.WorkNode
         /// <summary>
         /// Identity of the working node.
         /// </summary>
-        public string ProcessingNodeId;
+        public readonly string ProcessingNodeId;
         /// <summary>
         /// The Task about pulling.
         /// </summary>
@@ -40,38 +40,66 @@ namespace OrderProcessing.WorkNode
         /// </summary>
         private Task monitorTask;
         /// <summary>
-        /// Indicates if scheduler is running.
+        /// Indicates if scheduler is running. 0 means not running
         /// </summary>
-        private bool isRunning = false;
+        private int isRunning = 0;
+        private const int RUNNING = 1;
         /// <summary>
         /// WorkingNode configuration
         /// </summary>
-        public WorkNodeConfiguration Config { get; private set; }
+        public readonly WorkNodeConfiguration Config;
         /// <summary>
         /// A set of consumer threads.
         /// </summary>
-        private OrderWorkers Workers { get; set; }
+        private readonly OrderWorkers Workers;
         /// <summary>
         /// Last success heat beat time, this is used to check if the application is still connecting to the coordinate server(DB).
         /// </summary>
         private DateTime lastSuccessReportTime { get; set; }
 
-        private ElasticClient elasticClient = new ElasticClient();
+        /// <summary>
+        /// The in-memory queue used.
+        /// </summary>
+        private readonly BlockingCollection<OrderProcessingInfo> OrderProcessingQueue;
 
-        public NodeScheduler(string procesingNodeId, WorkNodeConfiguration configuration)
+        /// <summary>
+        /// Return if the scheduler is running.
+        /// </summary>
+        public bool IsRunning
         {
-            Config = configuration;
-            ProcessingNodeId = procesingNodeId;
-            Workers = new OrderWorkers(procesingNodeId, configuration);
+            get { return isRunning == RUNNING; }
         }
 
+        /// <summary>
+        /// Initilize a schduler for pulling and processing orders.
+        /// </summary>
+        /// <param name="procesingNodeId">The identity of the worknode</param>
+        /// <param name="configuration">Configuration</param>
+        /// <param name="processingQueue">The queue used</param>
+        /// <param name="processor">Processor to process the order</param>
+        public NodeScheduler(string procesingNodeId, WorkNodeConfiguration configuration, BlockingCollection<OrderProcessingInfo> processingQueue, IOrderProcessor processor )
+        {
+            CheckUtility.AssertNotNull(configuration, "configuration");
+            CheckUtility.AssertNotNullOrEmpty(procesingNodeId, "processingNodeId");
+            //check if the configuration is valid
+            CheckUtility.CheckScheduleConfiguration(configuration);
+            this.Config = configuration;
+            this.ProcessingNodeId = procesingNodeId;
+            this.Workers = new OrderWorkers(procesingNodeId, configuration.WorkNode, processingQueue, processor );
+            this.OrderProcessingQueue = processingQueue;
+        }
 
+        /// <summary>
+        /// Start the scheduler and workers.
+        /// </summary>
         public void Start()
         {
+            if(Interlocked.CompareExchange(ref isRunning, 1 , 0) == RUNNING)
+            {
+                Logger.LogWarning("Schduler already started, command ignored...");
+                return;
+            }
             Logger.LogInformation("Node {0} start schedule...".FormatWith(ProcessingNodeId));
-            isRunning = true;
-            //check if the configuration is valid
-            CheckUtility.CheckScheduleConfiguration(Config);
             //start pulling thread and monitor thread.
             pullingTask = Task.Factory.StartNew(() => SchedulerTask(cancellationTokenSource), cancellationTokenSource.Token);
             monitorTask = Task.Factory.StartNew(() => MonitorTask(cancellationTokenSource), cancellationTokenSource.Token);
@@ -80,9 +108,22 @@ namespace OrderProcessing.WorkNode
             Workers.Start();
         }
 
-        public bool IsRunning
+        /// <summary>
+        /// Would block the calling thread until cancellationTokenSource token reset.
+        /// </summary>
+        public void WaitForExit()
         {
-            get { return isRunning; }
+            cancellationTokenSource.Token.WaitHandle.WaitOne();
+        }
+
+        /// <summary>
+        /// Stop the worknode.
+        /// </summary>
+        public void Stop()
+        {
+            Logger.LogInformation("Scheduler Stop...");
+            cancellationTokenSource.Cancel();
+            Workers.Stop();
         }
 
         /// <summary>
@@ -92,7 +133,7 @@ namespace OrderProcessing.WorkNode
         /// <returns></returns>
         private int GetNewOrderProcessingInfo()
         {
-            var capability = Config.Scheduler.MaxQueueLength - SharedMessageQueue.OrderProcessingQueue.Count;
+            var capability = Config.Scheduler.MaxQueueLength - this.OrderProcessingQueue.Count;
             if (capability > 0)
             {
                 var infos =
@@ -101,10 +142,9 @@ namespace OrderProcessing.WorkNode
                 Logger.LogInformation("Got {0} new order processing infos...".FormatWith(infos.Count));
                 foreach (var info in infos)
                 {
-                    SharedMessageQueue.OrderProcessingQueue.Add(info);
-                    elasticClient.OrderPulledDone(info);
+                    this.OrderProcessingQueue.Add(info);
+                    PerfCounters.SchedulerPerf.CountNewOrderInfos(info);
                 }
-                Interlocked.Add(ref Statistic.Stat.PulledNewOrders, infos.Count);
                 return infos.Count;
             }
             return 0;
@@ -117,7 +157,7 @@ namespace OrderProcessing.WorkNode
         /// <returns></returns>
         private int GetDeadNodesProcessingInfo()
         {
-            var capability = Config.Scheduler.MaxQueueLength - SharedMessageQueue.OrderProcessingQueue.Count;
+            var capability = Config.Scheduler.MaxQueueLength - this.OrderProcessingQueue.Count;
             if (capability > 0)
             {
                 var infos =
@@ -127,10 +167,9 @@ namespace OrderProcessing.WorkNode
                 Logger.LogInformation("Got {0} dead node's order processing infos...".FormatWith(infos.Count));
                 foreach (var info in infos)
                 {
-                    SharedMessageQueue.OrderProcessingQueue.Add(info);
-                    elasticClient.OrderPulledDone(info);
+                    this.OrderProcessingQueue.Add(info);
+                    PerfCounters.SchedulerPerf.CountZombiesOrderInfos(info);
                 }
-                Interlocked.Add(ref Statistic.Stat.PulledDeadNoedsOrders, infos.Count);
                 return infos.Count;
             }
             return 0;
@@ -142,7 +181,7 @@ namespace OrderProcessing.WorkNode
         /// <returns></returns>
         private int GetTimedOutProcessingInfo()
         {
-            var capability = Config.Scheduler.MaxQueueLength - SharedMessageQueue.OrderProcessingQueue.Count;
+            var capability = Config.Scheduler.MaxQueueLength - this.OrderProcessingQueue.Count;
             if (capability > 0)
             {
                 var infos =
@@ -152,10 +191,9 @@ namespace OrderProcessing.WorkNode
                 Logger.LogInformation("Got {0} timedout order processing infos...".FormatWith(infos.Count));
                 foreach (var info in infos)
                 {
-                    SharedMessageQueue.OrderProcessingQueue.Add(info);
-                    elasticClient.OrderPulledDone(info);
+                    this.OrderProcessingQueue.Add(info);
+                    PerfCounters.SchedulerPerf.CountTimedoutOrderInfos(info);
                 }
-                Interlocked.Add(ref Statistic.Stat.PulledTimedOutOrders, infos.Count);
                 return infos.Count;
             }
             return 0;
@@ -165,7 +203,7 @@ namespace OrderProcessing.WorkNode
         /// Pulling thread main function.
         /// </summary>
         /// <param name="cancellationTokenSource"></param>
-        public void SchedulerTask(CancellationTokenSource cancellationTokenSource)
+        private void SchedulerTask(CancellationTokenSource cancellationTokenSource)
         {
             while (!cancellationTokenSource.IsCancellationRequested)
             {
@@ -176,10 +214,10 @@ namespace OrderProcessing.WorkNode
                         Config.Monitor.MaxNoHeartBeatIntervalSeconds)
                     {
                         var pulledOrdersCount = 0;
+                        //to do: the frequency of the 3 kinds of orders should be different.
                         pulledOrdersCount += GetNewOrderProcessingInfo();
                         pulledOrdersCount += GetDeadNodesProcessingInfo();
                         pulledOrdersCount += GetTimedOutProcessingInfo();
-                        Interlocked.Add(ref Statistic.Stat.PulledOrders, pulledOrdersCount);
                         Logger.LogInformation("Got {0} order processing infos".FormatWith(pulledOrdersCount));
                         Logger.LogInformation(
                             "Wait for {0} seconds to pull again.".FormatWith(
@@ -204,7 +242,7 @@ namespace OrderProcessing.WorkNode
         /// Health report thread
         /// </summary>
         /// <param name="cancellationTokenSource"></param>
-        public void MonitorTask(CancellationTokenSource cancellationTokenSource)
+        private void MonitorTask(CancellationTokenSource cancellationTokenSource)
         {
             //report start
             try
@@ -223,7 +261,7 @@ namespace OrderProcessing.WorkNode
                 try
                 {
                     Logger.LogInformation("Node {0} report heatbeat...".FormatWith(ProcessingNodeId));
-                    DataAccessor.NodeMonitor.ReportNodeHeartBeat(ProcessingNodeId, SharedMessageQueue.OrderProcessingQueue.Count);
+                    DataAccessor.NodeMonitor.ReportNodeHeartBeat(ProcessingNodeId, this.OrderProcessingQueue.Count);
                     lastSuccessReportTime = DateTime.UtcNow;
                 }
                 catch (Exception ex)
@@ -234,18 +272,6 @@ namespace OrderProcessing.WorkNode
             }
         }
 
-        public void WaitForExit()
-        {
-            cancellationTokenSource.Token.WaitHandle.WaitOne();
-        }
-
-
-        public void Stop()
-        {
-            Logger.LogInformation("Scheduler Stop...");
-            cancellationTokenSource.Cancel();
-            Workers.Stop();
-        }
 
         protected override void Disposing()
         {

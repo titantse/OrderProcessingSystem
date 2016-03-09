@@ -1,5 +1,4 @@
 ﻿
-
 namespace OrderProcessing.WorkNode
 {
     using System.Net;

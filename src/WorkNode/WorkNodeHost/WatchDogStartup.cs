@@ -1,8 +1,10 @@
-﻿using System.Web.Http;
-using Owin;
+﻿
 
 namespace OrderProcessing.WorkNode
 {
+    using System.Web.Http;
+    using Owin;
+
     public class WatchDogStartup
     {
         public void Configuration(IAppBuilder appBuilder)

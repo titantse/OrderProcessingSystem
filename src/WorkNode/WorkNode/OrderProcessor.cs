@@ -1,5 +1,4 @@
 ﻿
-
 namespace OrderProcessing.WorkNode
 {
     using System;
@@ -13,8 +12,35 @@ namespace OrderProcessing.WorkNode
     /// </summary>
     public class OrderProcessor : IOrderProcessor
     {
-        private int MockProcesstingSeconds = Settings.MockProcesstingSeconds;
+        /// <summary>
+        /// Simulate real world system processing time.
+        /// </summary>
+        private readonly int MockProcesstingSeconds;
+        /// <summary>
+        /// Simulate real work processing failure.
+        /// </summary>
+        private readonly double MockProcessingFailureRate;
 
+        public OrderProcessor()
+        {
+        }
+
+        /// <summary>
+        /// Initialize an order process with simulating parameters.
+        /// </summary>
+        /// <param name="mockProcessingSeconds">Seconds needed for simulating each step's processing time.</param>
+        /// <param name="mockProcessingFailureRate">Failure rate for simulateing each step's failure.</param>
+        public OrderProcessor(int mockProcessingSeconds, double mockProcessingFailureRate)
+        {
+            this.MockProcessingFailureRate = mockProcessingFailureRate;
+            this.MockProcesstingSeconds = mockProcessingSeconds;
+        }
+
+        /// <summary>
+        /// Step Pre Process.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <returns></returns>
         public ProcessorStepResult PreProcess(OrderProcessingInfo info)
         {
             info.Status = OrderStatus.PreProcessing;
@@ -32,6 +58,11 @@ namespace OrderProcessing.WorkNode
             return new ProcessorStepResult(updatedInfo, true);
         }
 
+        /// <summary>
+        /// Step Process.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <returns></returns>
         public ProcessorStepResult Process(OrderProcessingInfo info)
         {
             info.Status = OrderStatus.Processing;
@@ -48,6 +79,11 @@ namespace OrderProcessing.WorkNode
             return new ProcessorStepResult(updatedInfo, true);
         }
 
+        /// <summary>
+        /// Step Post Process.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <returns></returns>
         public ProcessorStepResult PostProcess(OrderProcessingInfo info)
         {
             info.Status = OrderStatus.PostProcessing;
@@ -66,14 +102,24 @@ namespace OrderProcessing.WorkNode
             return new ProcessorStepResult(updatedInfo, true);
         }
 
+        /// <summary>
+        /// Step for completed.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <returns></returns>
         public ProcessorStepResult CompleteProcess(OrderProcessingInfo info)
         {
-            info.Status = OrderStatus.Compeleted;
+            info.Status = OrderStatus.Completed;
             info.CompleteTime = DateTime.UtcNow;
             var updatedInfo = DataAccessor.DataAccessor.OrderRepository.UpdateProcessingInfo(info);
             return new ProcessorStepResult(updatedInfo, true);
         }
 
+        /// <summary>
+        /// Step for failure.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <returns></returns>
         public ProcessorStepResult FailProcess(OrderProcessingInfo info)
         {
             info.Status = OrderStatus.Failed;

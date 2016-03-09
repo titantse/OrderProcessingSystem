@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using OrderProcessing.Domain;
 using OrderProcessing.Domain.Request;
 
 namespace OrderProcessing.Test.UT
 {
-    public static class DataTestManager
+    public static class TestDataManager
     {
         public static OrderCreationRequest NewRequest()
         {
@@ -54,5 +55,16 @@ namespace OrderProcessing.Test.UT
             };
             return info;
         }
+
+
+        public static BlockingCollection<OrderProcessingInfo> NewOrderProcessinInfoQueue(int count)
+        {
+            BlockingCollection<OrderProcessingInfo> queue = new BlockingCollection<OrderProcessingInfo>();
+            for (int i = 0; i < count; ++i)
+            {
+                queue.Add(NewOrderProcessingInfo());
+            }
+            return queue;
+        } 
     }
 }

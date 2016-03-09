@@ -55,11 +55,14 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="DataTestManager.cs" />
+    <Compile Include="Common\TestDataManager.cs" />
     <Compile Include="TestBasic.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestDataAccess.cs" />
+    <Compile Include="Common\TestOrderProcessor.cs" />
+    <Compile Include="Common\TestRepository.cs" />
     <Compile Include="TestStateMachine.cs" />
+    <Compile Include="TestWorkNode.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -73,6 +76,10 @@
     <ProjectReference Include="..\..\Common\Configuration\Configuration.csproj">
       <Project>{98206f55-168a-4e9f-95cf-42dff9290a7f}</Project>
       <Name>Configuration</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Common\Performance\Performance.csproj">
+      <Project>{ab1dbcd4-ae68-468a-a72e-5b5f6a3058bd}</Project>
+      <Name>Performance</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Core\Core\Core.csproj">
       <Project>{b7736f19-b1ef-4a1b-9bfb-3ad0b6280460}</Project>
@@ -89,6 +96,10 @@
     <ProjectReference Include="..\..\DataAccess\DataAccessor\DataAccessor.csproj">
       <Project>{f8467675-6ac8-41be-ad2e-64b4798e63bb}</Project>
       <Name>DataAccessor</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\WorkNode\WorkNode\WorkNode.csproj">
+      <Project>{fd645ad6-59fa-4af2-8bf9-bdd4f8fc81ea}</Project>
+      <Name>WorkNode</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>

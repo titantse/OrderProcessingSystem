@@ -11,6 +11,7 @@ namespace OrderProcessing.WorkNode
     using OrderProcessing.Domain;
     using OrderProcessing.Logger;
     using OrderProcessing.Performance;
+    using System.Collections.Concurrent;
     /// <summary>
     ///     OrderWorkers is a set of consumer threads to process orders.
     /// </summary>
@@ -32,18 +33,56 @@ namespace OrderProcessing.WorkNode
         /// Working node Identity 
         /// </summary>
         private readonly string ProcessingNodeId;
+        private readonly IOrderProcessor Processor;
+        private readonly BlockingCollection<OrderProcessingInfo> ProcessingQueue;
         public WorkNodeElement Config { get; private set; }
 
-        public OrderWorkers(string processingNodeId, WorkNodeConfiguration configuration)
+        /// <summary>
+        /// Indicates if scheduler is running. 0 means not running
+        /// </summary>
+        private int isRunning = 0;
+        private const int RUNNING = 1;
+
+        /// <summary>
+        /// Return if the scheduler is running.
+        /// </summary>
+        public bool IsRunning
         {
-            Config = configuration.WorkNode;
-            ProcessingNodeId = processingNodeId;
+            get { return isRunning == RUNNING; }
         }
 
+        /// <summary>
+        /// Initialize the workers.
+        /// </summary>
+        /// <param name="processingNodeId">Identity of the worker.</param>
+        /// <param name="configuration">Configuration</param>
+        /// <param name="processingQueue">The queue that workers orders from</param>
+        /// <param name="processor">Processer for workers to process order.</param>
+        public OrderWorkers(string processingNodeId, WorkNodeElement configuration, BlockingCollection<OrderProcessingInfo> processingQueue, IOrderProcessor processor)
+        {
+            CheckUtility.AssertNotNull(processingQueue, "processingQueue");
+            CheckUtility.AssertNotNull(processor, "processor");
+            CheckUtility.AssertNotNull(configuration, "configuration");
+            CheckUtility.AssertNotNullOrEmpty(processingNodeId, "processingNodeId");
+            CheckUtility.AssertNotNull(configuration, "configuration");
+            CheckUtility.CheckWorkNodesConfiguration(configuration);
+            this.Config = configuration;
+            this.ProcessingNodeId = processingNodeId;
+            this.Processor = processor;
+            this.ProcessingQueue = processingQueue;
+        }
+
+        /// <summary>
+        /// Start the worknode.
+        /// </summary>
         public void Start()
         {
+            if (Interlocked.CompareExchange(ref isRunning, 1, 0) == RUNNING)
+            {
+                Logger.LogWarning("OrerWorkers already started, command ignored...");
+                return;
+            }
             Logger.LogInformation("{0} OrderWorkers Start...".FormatWith(ProcessingNodeId));
-            CheckUtility.CheckWorkNodesConfiguration(Config);
             Logger.LogInformation("Node {0} Starting {1} working threads...".FormatWith(ProcessingNodeId, Config.MaxConcurrentWorkingThreads));
             for (var i = 0; i < Config.MaxConcurrentWorkingThreads; ++i)
             {
@@ -55,23 +94,30 @@ namespace OrderProcessing.WorkNode
             }
         }
 
+        /// <summary>
+        /// Stop workers.
+        /// </summary>
+        public void Stop()
+        {
+            Logger.LogInformation("OrderWorkers Stop...");
+            cancellationTokenSource.Cancel();
+            Task.WaitAll(concurrentTasks.ToArray(), Config.MaxConcurrentWorkingThreads);
+        }
 
-        public void OrderWorkerTask(CancellationTokenSource cancellationTokenSource, string threadId)
+        private void OrderWorkerTask(CancellationTokenSource cancellationTokenSource, string threadId)
         {
             Logger.LogVerbose("Node {0} Task {1} start...".FormatWith(ProcessingNodeId, threadId));
             //initialize state machine.
-            var processor = new OrderProcessor();
             var stateMachine = new OrderStateMachine();
-            stateMachine.SetOperation(OrderStatus.PreProcessing, processor.PreProcess);
-            stateMachine.SetOperation(OrderStatus.Processing, processor.Process);
-            stateMachine.SetOperation(OrderStatus.PostProcessing, processor.PostProcess);
-            stateMachine.SetOperation(OrderStatus.Compeleted, processor.CompleteProcess);
-            stateMachine.SetOperation(OrderStatus.Failed, processor.FailProcess);
-            ElasticClient elasticClient = new ElasticClient();
+            stateMachine.SetOperation(OrderStatus.PreProcessing, this.Processor.PreProcess);
+            stateMachine.SetOperation(OrderStatus.Processing, this.Processor.Process);
+            stateMachine.SetOperation(OrderStatus.PostProcessing, this.Processor.PostProcess);
+            stateMachine.SetOperation(OrderStatus.Completed, this.Processor.CompleteProcess);
+            stateMachine.SetOperation(OrderStatus.Failed, this.Processor.FailProcess);
             while (!cancellationTokenSource.IsCancellationRequested)
             {
                 OrderProcessingInfo info;
-                if (SharedMessageQueue.OrderProcessingQueue.TryTake(out info, MAX_WAITTIME_SECONDS_FOR_QUEUE * 1000))
+                if (this.ProcessingQueue.TryTake(out info, MAX_WAITTIME_SECONDS_FOR_QUEUE * 1000))
                 {
                     Logger.LogVerbose("Start processing order {0} with status {1}...".FormatWith(info.Id,
                         info.Status));
@@ -82,11 +128,11 @@ namespace OrderProcessing.WorkNode
                         processedInfo = stateMachine.Run(info);
                         if (processedInfo.Status == OrderStatus.Failed)
                         {
-                            Interlocked.Increment(ref Statistic.Stat.FailedProcessed);
+                            PerfCounters.WorkerPerf.ProcessFailed(info);
                         }
                         else
                         {
-                            Interlocked.Increment(ref Statistic.Stat.CompleteProcessed);
+                            PerfCounters.WorkerPerf.ProcessCompleted(info);
                         }
                         Logger.LogVerbose("Order {0} processed with status {1}".FormatWith(info.Id, info.Status));
                     }
@@ -102,23 +148,15 @@ namespace OrderProcessing.WorkNode
                             Logger.LogWarning(
                                 "Order {0} would be skipped due to timestamp conflict.".FormatWith(info.Id));
                         }
-                        Interlocked.Increment(ref Statistic.Stat.StateMachineException);
+                        PerfCounters.WorkerPerf.ProcessException(info);
                         Logger.LogException(ex, "Order {0} processing failed.".FormatWith(info.Id));
                     }
-                    Interlocked.Increment(ref Statistic.Stat.ProcessedCount);
-                    elasticClient.OrderProcessDone(processedInfo);
-                    
+                    PerfCounters.WorkerPerf.Processed(processedInfo);
                 }
             }
             Logger.LogVerbose("Task {0} stopped.".FormatWith(threadId));
         }
 
-        public void Stop()
-        {
-            Logger.LogInformation("OrderWorkers Stop...");
-            cancellationTokenSource.Cancel();
-            Task.WaitAll(concurrentTasks.ToArray(), Config.MaxConcurrentWorkingThreads);
-        }
 
         protected override void Disposing()
         {
