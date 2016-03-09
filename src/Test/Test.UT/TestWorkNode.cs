@@ -1,4 +1,6 @@
 ﻿
+using System.Collections.Generic;
+
 namespace OrderProcessing.Test.UT
 {
     using System.Collections.Concurrent;
@@ -19,6 +21,28 @@ namespace OrderProcessing.Test.UT
             GeneralPerfCounter.Instance.Stat.Reset();
             PerfCounters.WorkerPerf = GeneralPerfCounter.Instance;
             PerfCounters.SchedulerPerf = GeneralPerfCounter.Instance;
+        }
+
+        private WorkNodeConfiguration TestConfiguration(int concurrentWokringThreads = 5, int pullingCountEachTime = 30, int maxQueueSize= 100)
+        {
+            WorkNodeConfiguration configuration = new WorkNodeConfiguration()
+            {
+                WorkNode = new WorkNodeElement() { MaxConcurrentWorkingThreads = concurrentWokringThreads },
+                Monitor = new MonitorConfiguration()
+                {
+                    HeartBeatIntervalSeconds = 5,
+                    MaxNoHeartBeatIntervalSeconds = 50,
+                },
+                Scheduler = new ScheduleConfiguration()
+                {
+                    PullingTasksIntervalSeconds = 1,
+                    PullingTasksEachTime = pullingCountEachTime,
+                    MaxQueueLength = maxQueueSize,
+                    ProcessingTimedOutSeconds = 3
+                },
+                MaxWaitSecondsWhenStopping = 3
+            };
+            return configuration;
         }
 
         [TestMethod]
@@ -66,29 +90,11 @@ namespace OrderProcessing.Test.UT
             DataAccessor.OrderRepository = reprository;
             DataAccessor.NodeMonitor = reprository;
 
-            WorkNodeConfiguration configuration = new WorkNodeConfiguration()
-            {
-                WorkNode = new WorkNodeElement() { MaxConcurrentWorkingThreads = 5 },
-                Monitor = new MonitorConfiguration()
-                {
-                    HeartBeatIntervalSeconds = 5,
-                    MaxNoHeartBeatIntervalSeconds = 50,
-                },
-                Scheduler = new ScheduleConfiguration()
-                {
-                    PullingTasksIntervalSeconds = 1, 
-                    PullingTasksEachTime = 30, 
-                    MaxQueueLength = 100, 
-                    ProcessingTimedOutSeconds = 3
-                },
-                MaxWaitSecondsWhenStopping = 3
-            };
-
             var processingQueue = new BlockingCollection<OrderProcessingInfo>();
 
             TestOrderProcessor processor = new TestOrderProcessor();
             NodeScheduler scheduler = new NodeScheduler("BVT",
-                configuration, processingQueue, processor);
+                TestConfiguration(), processingQueue, processor);
 
             ResetPerfCount();
 
@@ -110,6 +116,49 @@ namespace OrderProcessing.Test.UT
             scheduler.Start();
             scheduler.Stop();
             scheduler.Stop();
+        }
+
+
+        [TestMethod]
+        [TestCategory("BVT")]
+        public void TestMultipleSchedulers()
+        {
+            int testSize = 500;
+            int totalSize = testSize * 6;
+            TestRepository reprository = new TestRepository(
+                TestDataManager.NewOrderProcessinInfoQueue(testSize * 3),
+                TestDataManager.NewOrderProcessinInfoQueue(testSize * 2),
+                TestDataManager.NewOrderProcessinInfoQueue(testSize));
+            DataAccessor.OrderRepository = reprository;
+            DataAccessor.NodeMonitor = reprository;
+
+            
+            var processingQueue = new BlockingCollection<OrderProcessingInfo>();
+
+            List<NodeScheduler> schdulers = new List<NodeScheduler>();
+            TestOrderProcessor processor = new TestOrderProcessor();
+            for (int i = 0; i < 5; ++i)
+            {
+                schdulers.Add( new NodeScheduler("BVT",
+                TestConfiguration(), processingQueue, processor));
+            }
+
+            ResetPerfCount();
+
+            schdulers.ForEach(i=>i.Start());
+            while (!reprository.IsEmpty)
+            {
+                Thread.Sleep(2000);
+            }
+            schdulers.ForEach(i=>i.Stop());
+
+            Assert.AreEqual(totalSize, processor.PreProcessed);
+            Assert.AreEqual(totalSize, processor.Processed);
+            Assert.AreEqual(totalSize, processor.PostProcessed);
+
+            Assert.AreEqual(totalSize, Statistic.Stat.ProcessCompleted);
+            Assert.AreEqual(totalSize, Statistic.Stat.Processed);
+
         }
 
     }
