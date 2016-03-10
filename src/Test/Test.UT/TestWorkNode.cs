@@ -1,5 +1,7 @@
 ﻿
+using System;
 using System.Collections.Generic;
+using System.Runtime.Remoting;
 
 namespace OrderProcessing.Test.UT
 {
@@ -91,27 +93,22 @@ namespace OrderProcessing.Test.UT
             DataAccessor.NodeMonitor = reprository;
 
             var processingQueue = new BlockingCollection<OrderProcessingInfo>();
-
             TestOrderProcessor processor = new TestOrderProcessor();
             NodeScheduler scheduler = new NodeScheduler("BVT",
                 TestConfiguration(), processingQueue, processor);
 
             ResetPerfCount();
-
             scheduler.Start();
             while (!reprository.IsEmpty)
             {
                 Thread.Sleep(2000);
             }
             scheduler.Stop();
-
             Assert.AreEqual(totalSize, processor.PreProcessed);
             Assert.AreEqual(totalSize, processor.Processed);
             Assert.AreEqual(totalSize,processor.PostProcessed);
-
             Assert.AreEqual(totalSize, Statistic.Stat.ProcessCompleted);
             Assert.AreEqual(totalSize, Statistic.Stat.Processed);
-
             scheduler.Start();
             scheduler.Start();
             scheduler.Stop();
@@ -125,28 +122,22 @@ namespace OrderProcessing.Test.UT
         {
             int testSize = 500;
             int totalSize = testSize * 6;
-            TestRepository reprository = new TestRepository(
+            TestRepository repository = new TestRepository(
                 TestDataManager.NewOrderProcessinInfoQueue(testSize * 3),
                 TestDataManager.NewOrderProcessinInfoQueue(testSize * 2),
                 TestDataManager.NewOrderProcessinInfoQueue(testSize));
-            DataAccessor.OrderRepository = reprository;
-            DataAccessor.NodeMonitor = reprository;
-
-            
-            var processingQueue = new BlockingCollection<OrderProcessingInfo>();
-
+            DataAccessor.OrderRepository = repository;
+            DataAccessor.NodeMonitor = repository;
             List<NodeScheduler> schdulers = new List<NodeScheduler>();
             TestOrderProcessor processor = new TestOrderProcessor();
             for (int i = 0; i < 5; ++i)
             {
                 schdulers.Add( new NodeScheduler("BVT",
-                TestConfiguration(), processingQueue, processor));
+                TestConfiguration(), new BlockingCollection<OrderProcessingInfo>(), processor));
             }
-
             ResetPerfCount();
-
             schdulers.ForEach(i=>i.Start());
-            while (!reprository.IsEmpty)
+            while (!repository.IsEmpty)
             {
                 Thread.Sleep(2000);
             }
@@ -155,10 +146,52 @@ namespace OrderProcessing.Test.UT
             Assert.AreEqual(totalSize, processor.PreProcessed);
             Assert.AreEqual(totalSize, processor.Processed);
             Assert.AreEqual(totalSize, processor.PostProcessed);
-
             Assert.AreEqual(totalSize, Statistic.Stat.ProcessCompleted);
             Assert.AreEqual(totalSize, Statistic.Stat.Processed);
+        }
 
+        [TestMethod]
+        [TestCategory("BVT")]
+        public void TestFailureRatio()
+        {
+            ResetPerfCount();
+            TestOrderProcessor processor = new TestOrderProcessor(0.05);
+            int testSize = 500;
+            int totalSize = testSize*6;
+            TestRepository repository = new TestRepository(
+                TestDataManager.NewOrderProcessinInfoQueue(testSize * 3),
+                TestDataManager.NewOrderProcessinInfoQueue(testSize * 2),
+                TestDataManager.NewOrderProcessinInfoQueue(testSize));
+            DataAccessor.OrderRepository = repository;
+            DataAccessor.NodeMonitor = repository;
+            NodeScheduler scheduler = new NodeScheduler("BVT", 
+                TestConfiguration(),
+                new BlockingCollection<OrderProcessingInfo>(),
+                processor);
+            List<NodeScheduler> schdulers = new List<NodeScheduler>();
+            for (int i = 0; i < 5; ++i)
+            {
+                schdulers.Add(new NodeScheduler("BVT",
+                TestConfiguration(), new BlockingCollection<OrderProcessingInfo>(), processor));
+            }
+            schdulers.ForEach(i => i.Start());
+            while (!repository.IsEmpty)
+            {
+                Thread.Sleep(2000);
+            }
+            schdulers.ForEach(i => i.Stop());
+
+            Assert.AreEqual(totalSize, processor.PreProcessed);
+            Assert.AreEqual(totalSize, processor.Processed + processor.PreProcessFailed);
+            Assert.AreEqual(totalSize, processor.PostProcessed + processor.PreProcessFailed + processor.ProcessFailed);
+            Assert.AreEqual(processor.FailureCount, processor.PreProcessFailed+ processor.ProcessFailed + processor.PostProcessFailed);
+
+            Assert.AreEqual(Statistic.Stat.ProcessFailed, processor.FailureCount);
+
+            double expectedFailureRate = 1- 0.95*0.95*0.95;
+            double offset = expectedFailureRate*0.1;
+
+            Assert.IsTrue(Math.Abs(processor.FailureCount * 1.0 / totalSize - expectedFailureRate) < offset);
         }
 
     }
