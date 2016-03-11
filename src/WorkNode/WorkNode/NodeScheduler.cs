@@ -226,7 +226,7 @@ namespace OrderProcessing.WorkNode
                     else
                     {
                         Logger.LogWarning(
-                            "Time to last healthy report too long, node maybe isolated, don't pull any data.");
+                            "Time to last healthy report too long({0}), node maybe isolated, don't pull any data.".FormatWith(lastSuccessReportTime.ToLocalTime().ToString()));
                     }
                 }
                 catch (Exception ex)
@@ -263,6 +263,7 @@ namespace OrderProcessing.WorkNode
                     Logger.LogInformation("Node {0} report heatbeat...".FormatWith(ProcessingNodeId));
                     DataAccessor.NodeMonitor.ReportNodeHeartBeat(ProcessingNodeId, this.OrderProcessingQueue.Count);
                     lastSuccessReportTime = DateTime.UtcNow;
+                    Logger.LogWarning("last report time:{0}".FormatWith(lastSuccessReportTime.ToLocalTime().ToString()));
                 }
                 catch (Exception ex)
                 {

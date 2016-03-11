@@ -1,5 +1,4 @@
 ﻿
-
 namespace OrderProcessing.WorkNode
 {
     using System;
@@ -10,6 +9,7 @@ namespace OrderProcessing.WorkNode
     using OrderProcessing.Configuration;
     using OrderProcessing.DataAccessor;
     using OrderProcessing.Logger;
+    using OrderProcessing.Performance;
 
     internal static class Program
     {
@@ -27,7 +27,9 @@ namespace OrderProcessing.WorkNode
             //In memory Repository, this is usually for testing purpose.
             if (Settings.OverrideSQLRepository)
             {
-                DataAccessor.OrderRepository = new MemoryRepository();
+                var da = new MemoryRepository();
+                DataAccessor.OrderRepository = da;
+                DataAccessor.NodeMonitor = da;
             }
             //Initialize request spawner
             if (Settings.EnableRequestSpawner)
@@ -36,7 +38,12 @@ namespace OrderProcessing.WorkNode
                 spawner.Start();
             }
             #endregion
-            
+
+            #region Initilize Prfcounter
+            PerfCounters.WorkerPerf = ElasticPerfCounter.Instance;
+            PerfCounters.SchedulerPerf = ElasticPerfCounter.Instance;
+            #endregion
+
             #region Watchdog listener
             //Initialize Watchdog
             if (!string.IsNullOrEmpty(ConfigurationManager.AppSettings["WatchdogBaseAddress"]))
@@ -55,7 +62,6 @@ namespace OrderProcessing.WorkNode
             #endregion
 
             scheduler.WaitForExit();
-
 
             if (watchdogHost != null)
                 watchdogHost.Dispose();

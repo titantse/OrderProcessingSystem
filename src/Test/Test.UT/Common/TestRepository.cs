@@ -1,9 +1,8 @@
 ﻿
-using System.Threading;
-
 namespace OrderProcessing.Test.UT
 {
     using System;
+    using System.Threading;
     using System.Collections.Generic;
     using OrderProcessing.Domain;
     using OrderProcessing.Domain.Request;
@@ -13,10 +12,13 @@ namespace OrderProcessing.Test.UT
 
     public class TestRepository : IOrderRepository, INodeMonitor
     {
+        public const string NODE_WOULD_DEAD = "I_WILL_FAIL";
+        public const string NODE_WOULD_TIMEDOUT = "I_WILL_TIMEOUT";
 
         public BlockingCollection<OrderProcessingInfo> DeadNodesQueue = new BlockingCollection<OrderProcessingInfo>();
         public BlockingCollection<OrderProcessingInfo> NewOrders = new BlockingCollection<OrderProcessingInfo>();
         public BlockingCollection<OrderProcessingInfo> TimedoutOrders = new BlockingCollection<OrderProcessingInfo>();
+        public ConcurrentDictionary<string , bool> IfBeenBadNodePicked  =new ConcurrentDictionary<string, bool>();
 
         public int UpdatedTimes = 0;
         
@@ -59,16 +61,42 @@ namespace OrderProcessing.Test.UT
 
         public List<OrderProcessingInfo> GetNewProcessingInfos(int count, string nodeId)
         {
-            return getOrdersFromQueue(NewOrders, count);
+            var list = getOrdersFromQueue(NewOrders, count);
+            if (NODE_WOULD_DEAD.Equals(nodeId))
+            {
+                list.ForEach(i =>
+                {
+                    if (!IfBeenBadNodePicked.ContainsKey(i.Id))
+                    {
+                        if (IfBeenBadNodePicked.TryAdd(i.Id, false))
+                        {
+                            DeadNodesQueue.Add(i);
+                        }
+                    }
+                });
+            }
+            if (NODE_WOULD_TIMEDOUT.Equals(nodeId))
+            {
+                list.ForEach(i =>
+                {
+                    if (!IfBeenBadNodePicked.ContainsKey(i.Id) && IfBeenBadNodePicked.TryAdd(i.Id, false))
+                    {
+                        TimedoutOrders.Add(i);
+                    }
+                });
+            }
+            return list;
         }
 
         public List<OrderProcessingInfo> GetDeadNodesProcessingInfos(int count, string nodeId, int maxNoHeartBeatSeconds)
         {
+            if(NODE_WOULD_DEAD.Equals(nodeId)) return new List<OrderProcessingInfo>();
             return getOrdersFromQueue(DeadNodesQueue, count);
         }
 
         public List<OrderProcessingInfo> GetTimedOutProcessingInfos(int count, string nodeId, int timedOutSeconds)
         {
+            if(NODE_WOULD_TIMEDOUT.Equals(nodeId)) return new List<OrderProcessingInfo>();
             return getOrdersFromQueue(TimedoutOrders, count);
         }
 
@@ -85,14 +113,10 @@ namespace OrderProcessing.Test.UT
 
         public void ReportNodeStarted(string nodeId)
         {
-            
         }
 
         public void ReportNodeHeartBeat(string nodeId, int currentQueueSize)
         {
-            
         }
-
-
     }
 }

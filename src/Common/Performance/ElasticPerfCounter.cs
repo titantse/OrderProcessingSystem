@@ -6,7 +6,7 @@ namespace OrderProcessing.Performance
     public class ElasticPerfCounter : GeneralPerfCounter
     {
         private static ElasticPerfCounter generalPerf;
-        private ElasticClient elasticClient;
+        public ElasticClient elasticClient { get; private set; }
 
         private ElasticPerfCounter()
         {
@@ -34,11 +34,31 @@ namespace OrderProcessing.Performance
             elasticClient.OrderProcessDone(processingInfo);
         }
 
+        public void ProcessCompleted(OrderProcessingInfo processingInfo)
+        {
+            base.ProcessCompleted(processingInfo);
+            
+        }
+
+        public void ProcessFailed(OrderProcessingInfo processingInfo)
+        {
+            base.ProcessFailed(processingInfo);
+        }
+
+        public void TimestampConflicted(OrderProcessingInfo processingInfo)
+        {
+            base.TimestampConflicted(processingInfo);
+        }
+
+        public void ProcessException(OrderProcessingInfo processingInfo)
+        {
+            base.ProcessException(processingInfo);
+        }
+
         public void Processed(OrderProcessingInfo processingInfo)
         {
             base.Processed(processingInfo);
             elasticClient.OrderProcessDone(processingInfo);
         }
-
     }
 }

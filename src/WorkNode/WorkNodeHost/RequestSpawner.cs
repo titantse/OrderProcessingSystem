@@ -14,8 +14,8 @@ namespace OrderProcessing.WorkNode
     public class RequestSpawner :BaseDisposable
     {
         private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-        private const int SPAWN_COUNT_EACH_TIME = 20;
-        private const int SPAWN_TIME_INTERVAL_SECONDS = 5;
+        private const int SPAWN_COUNT_EACH_TIME = 200;
+        private const int SPAWN_TIME_INTERVAL_SECONDS = 2;
         public void Start()
         {
             Task.Factory.StartNew(() => SpawnRequests(cancellationTokenSource), cancellationTokenSource.Token);

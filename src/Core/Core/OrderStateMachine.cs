@@ -81,7 +81,6 @@ namespace OrderProcessing.Core
             actions[status] = action;
         }
 
-
         /// <summary>
         ///     Start to run the state machine from the order's current status.
         ///     If program crashes at any step, in each step, execute result(success/fail) is recored.
@@ -101,7 +100,6 @@ namespace OrderProcessing.Core
                 lastStepSuccess = orderInfo.StepsInfo[currentStatus].Success;
             //start from next status.
             currentStatus = stateMachine[currentStatus][lastStepSuccess];
-            orderInfo.Status = currentStatus;
             while (stateMachine.ContainsKey(currentStatus))
             {
                 Logger.LogInformation("Order {0} processing with status {1} start...".FormatWith(orderInfo.Id,
@@ -130,7 +128,6 @@ namespace OrderProcessing.Core
                 //currentStatus -> nextStatus
                 currentStatus = stateMachine[currentStatus][stepResult.Success];
                 orderInfo = stepResult.ProcessingInfo;
-                orderInfo.Status = currentStatus;
             }
             //If failure happens here, the order would be re-picked up in the future.
             if (actions.ContainsKey(currentStatus))
@@ -138,7 +135,6 @@ namespace OrderProcessing.Core
                 //If error happens at last state, just wll let the order timed out.
                 var stepResult = actions[currentStatus].Invoke(orderInfo);
                 orderInfo = stepResult.ProcessingInfo;
-                orderInfo.Status = currentStatus;
             }
             return orderInfo;
         }

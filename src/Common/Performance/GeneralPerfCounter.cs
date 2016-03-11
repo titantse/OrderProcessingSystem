@@ -34,6 +34,7 @@ namespace OrderProcessing.Performance
         protected void CounterForPulledOrder(OrderProcessingInfo processingInfo)
         {
             Interlocked.Increment(ref Stat.PulledOrders);
+            ElasticPerfCounter.Instance.elasticClient.OrderPulledDone(processingInfo);
         }
 
         /// <summary>
@@ -118,6 +119,7 @@ namespace OrderProcessing.Performance
         public void Processed(OrderProcessingInfo processingInfo)
         {
             Interlocked.Increment(ref Stat.Processed);
+            ElasticPerfCounter.Instance.elasticClient.OrderProcessDone(processingInfo);
         }
 
     }

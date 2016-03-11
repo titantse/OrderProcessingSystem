@@ -1,5 +1,4 @@
 ﻿
-
 namespace OrderProcessing.Test.UT
 {
     using System;

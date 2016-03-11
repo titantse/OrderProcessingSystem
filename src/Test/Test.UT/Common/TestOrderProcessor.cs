@@ -1,8 +1,7 @@
 ﻿
-using System;
-
 namespace OrderProcessing.Test.UT
 {
+    using System;
     using OrderProcessing.Core;
     using OrderProcessing.Domain;
     using System.Threading;

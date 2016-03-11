@@ -39,6 +39,8 @@ namespace OrderProcessing.Performance
             });
         }
 
+        
+
         private void SafeRunMethod(Action a)
         {
             try
