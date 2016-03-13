@@ -261,7 +261,7 @@ namespace OrderProcessing.WorkNode
                 try
                 {
                     Logger.LogInformation("Node {0} report heatbeat...".FormatWith(ProcessingNodeId));
-                    DataAccessor.NodeMonitor.ReportNodeHeartBeat(ProcessingNodeId, this.OrderProcessingQueue.Count);
+                    DataAccessor.NodeMonitor.ReportNodeHeartBeat(ProcessingNodeId, this.Workers.AvailableThreads);
                     lastSuccessReportTime = DateTime.UtcNow;
                     Logger.LogWarning("last report time:{0}".FormatWith(lastSuccessReportTime.ToLocalTime().ToString()));
                 }

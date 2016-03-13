@@ -17,6 +17,6 @@ namespace OrderProcessing.Interface
         /// </summary>
         /// <param name="nodeId"></param>
         /// <param name="currentQueueSize"></param>
-        void ReportNodeHeartBeat(string nodeId, int currentQueueSize);
+        void ReportNodeHeartBeat(string nodeId, int availableThreads);
     }
 }

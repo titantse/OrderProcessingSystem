@@ -43,6 +43,12 @@ namespace OrderProcessing.WorkNode
         private int isRunning = 0;
         private const int RUNNING = 1;
 
+        private int availableTrheads = 0;
+        public int AvailableThreads { 
+            get { return availableTrheads; }
+            private set { availableTrheads = value; }
+        }
+
         /// <summary>
         /// Return if the scheduler is running.
         /// </summary>
@@ -82,6 +88,7 @@ namespace OrderProcessing.WorkNode
                 Logger.LogWarning("OrerWorkers already started, command ignored...");
                 return;
             }
+            this.AvailableThreads = Config.MaxConcurrentWorkingThreads;
             Logger.LogInformation("{0} OrderWorkers Start...".FormatWith(ProcessingNodeId));
             Logger.LogInformation("Node {0} Starting {1} working threads...".FormatWith(ProcessingNodeId, Config.MaxConcurrentWorkingThreads));
             for (var i = 0; i < Config.MaxConcurrentWorkingThreads; ++i)
@@ -119,6 +126,7 @@ namespace OrderProcessing.WorkNode
                 OrderProcessingInfo info;
                 if (this.ProcessingQueue.TryTake(out info, MAX_WAITTIME_SECONDS_FOR_QUEUE * 1000))
                 {
+                    Interlocked.Decrement(ref availableTrheads);
                     Logger.LogVerbose("Start processing order {0} with status {1}...".FormatWith(info.Id,
                         info.Status));
                     var executeSucceed = false;
@@ -153,6 +161,7 @@ namespace OrderProcessing.WorkNode
                     }
                     PerfCounters.WorkerPerf.Processed(processedInfo);
                 }
+                Interlocked.Increment(ref availableTrheads);
             }
             Logger.LogVerbose("Task {0} stopped.".FormatWith(threadId));
         }

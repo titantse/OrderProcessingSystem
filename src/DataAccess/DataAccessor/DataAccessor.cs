@@ -66,12 +66,12 @@ namespace OrderProcessing.DataAccessor
             });
         }
 
-        public void ReportNodeHeartBeat(string nodeId, int queueSize)
+        public void ReportNodeHeartBeat(string nodeId, int currentAvailableThreads)
         {
             QueryStoreProcedure("sp_report_node_heart_beat", new Dictionary<string, object>
             {
                 {"@work_node_id", nodeId},
-                {"@processing_order_count", queueSize}
+                {"@processing_order_count", currentAvailableThreads}
             });
         }
 

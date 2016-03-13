@@ -224,7 +224,7 @@ namespace OrderProcessing.Test.UT
             */
             schedulerWouldDie.Start();
             //schedulerWouldHang.Start();
-            Thread.Sleep(500);
+            Thread.Sleep(2000);
             schedulerWouldDie.Stop();
             //schedulerWouldHang.Stop();
             scheduler.Start();
@@ -233,8 +233,8 @@ namespace OrderProcessing.Test.UT
                 Thread.Sleep(2000);
             }
             Assert.AreEqual(totalSize, processor1.PreProcessed  );
-            Assert.AreEqual(totalSize, processor1.Processed +  processorDead.Processed +  processorTimedOut.Processed);
-            Assert.AreEqual(totalSize, processor1.PostProcessed +  processorDead.PostProcessed +  processorTimedOut.PostProcessed);
+            Assert.AreEqual(totalSize, processor1.Processed +  processorDead.Processed );
+            Assert.AreEqual(totalSize, processor1.PostProcessed +  processorDead.PostProcessed );
 
             Assert.AreEqual(zombieSize, processorDead.PreProcessed );
             Assert.AreEqual(zombieSize, processorDead.Processed);
