@@ -36,10 +36,10 @@ The coding and test of the system is completed. The performance improvement hasn
 
 ## Operation
 When WorkNode is started, following url are help to monitor the if the node works well.
-http://localhost:8765/comm-and/stat Statistics of the node.
-http://localhost:8765/command/stop Stop the node.
-http://localhost:8765/Watchdog_Selfclosure Watchdog self closure.
-http://localhost:8765/Watchdog_External Watchdog check external dependy(DB)
++Statistics of the node: http://localhost:8765/comm-and/stat
++Stop the node: http://localhost:8765/command/stop
++Watchdog self closure: http://localhost:8765/Watchdog_Selfclosure
++Watchdog check external dependy(DB): http://localhost:8765/Watchdog_External 
 
 
 ## Benchmark
