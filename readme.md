@@ -15,11 +15,11 @@ This is an experimental project for practising developing a distributed order pr
 
 ## System Design
 In this system, I use SQL Server as a queue for async processing. There are 3 layers:
-+ Order Restful API
+#### Order Restful API
 Order API is exposed to the caller, it provides 2 API, create an order and get an order by id.
-+ OrderDB
+#### OrderDB
 It's both the storage and the queue for async processing, we build the service on top of SQL Server.
-+ WorkNode
+#### WorkNode
 WorkNode is the processing program basically including two parts. One for preodically pull data from DB with 1 thread(called scheduler), and the other are multiple threads to process the order(called workers).
 In WorkNode, there is an in-memory queue to help to implement pub-sub pattern. and another thread which is responsible to report health to DB, so that when an WorkNode down, DB would know and assign new orders to other living nodes.
 
