@@ -1,10 +1,10 @@
 # Order Processing System
 
-This is an experimental project for practising developing a distributed order process system with production bar including: functionality, coding style, corner cases coverage, unit test, performance tunning, operationing. Following are the requirement:
+This is an experimental project for practising developing a distributed order process system with **production bar** including: functionality, coding style, corner cases coverage, unit test, performance tunning, operationing.
 
 
 ## System Requirement
-1.  Customer can place an order and submit to this system,  system will return customer an uniq order-id and \*async\* process that order. 
+1.  Customer can place an order and submit to this system,  system will return customer an uniq order-id and **async** process that order. 
 2.  Each Order go through 4 steps (Scheduling, Pre-Processing,  Processing,  Post-Processing ). Each Step need 5 seconds for processing.  There is 2 extra steps (Completed, Failed) indicating Failure.  
 3.  Customer can use order ID to query order details.  Order detail at least include:  Order ID,  current step,  Order start time and complete time,  each step’s start time and complete time.   
 4.  If there’s any failure among above 5 steps,  system need to rollback and mark order as failure.  Each Step has 5% of failure ratio. 
